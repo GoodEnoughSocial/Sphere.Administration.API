@@ -1,8 +1,12 @@
+using System.Diagnostics;
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Sphere.Administration.API.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("[controller]")]
 public class WeatherForecastController : ControllerBase
 {
@@ -16,6 +20,13 @@ public class WeatherForecastController : ControllerBase
     public WeatherForecastController(ILogger<WeatherForecastController> logger)
     {
         _logger = logger;
+    }
+
+    [HttpGet("test")]
+    public IActionResult GetAuth()
+    {
+        Debugger.Break();
+        return new JsonResult(from c in User.Claims select new { c.Type, c.Value });
     }
 
     [HttpGet(Name = "GetWeatherForecast")]
