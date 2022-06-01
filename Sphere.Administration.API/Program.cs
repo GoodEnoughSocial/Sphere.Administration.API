@@ -1,4 +1,5 @@
 using Microsoft.IdentityModel.Tokens;
+using Sphere.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = "https://localhost:5004";
+        options.Authority = Services.Auth.Address;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {

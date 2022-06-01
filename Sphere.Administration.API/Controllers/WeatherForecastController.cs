@@ -22,7 +22,7 @@ public class WeatherForecastController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("test")]
+    [HttpGet("/identity")]
     public IActionResult GetAuth()
     {
         Debugger.Break();
