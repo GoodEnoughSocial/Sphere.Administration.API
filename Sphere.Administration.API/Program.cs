@@ -13,6 +13,8 @@ try
     var result = await Services.RegisterService(registration);
 
     var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilog(SphericalLogger.ConfigureLogger);
+    builder.Services.AddHealthChecks();
 
     // Add services to the container.
 
@@ -43,6 +45,7 @@ try
     builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
+    app.MapHealthChecks("/health");
 
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
