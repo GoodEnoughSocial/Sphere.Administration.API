@@ -1,50 +1,76 @@
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using Sphere.Shared;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = SphericalLogger.SetupLogger();
 
-// Add services to the container.
+Log.Information("Starting up");
 
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
-    {
-        options.Authority = Services.Auth.Address;
+var registration = Services.Administration.GetServiceRegistration();
 
-        options.TokenValidationParameters = new TokenValidationParameters
+try
+{
+    var result = await Services.RegisterService(registration);
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Add services to the container.
+
+    builder.Services.AddAuthentication("Bearer")
+        .AddJwtBearer("Bearer", options =>
         {
-            ValidateAudience = false,
-        };
-    });
+            options.Authority = Services.Auth.Address;
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("ApiScope", policy =>
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+            };
+        });
+
+    builder.Services.AddAuthorization(options =>
     {
-        policy.RequireAuthenticatedUser();
-        policy.RequireClaim("scope", "api1");
+        options.AddPolicy("ApiScope", policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.RequireClaim("scope", "api1");
+        });
     });
-});
 
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+    builder.Services.AddControllers();
+    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+    var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapControllers().RequireAuthorization("ApiScope");
+
+    app.Run();
 }
+catch (Exception ex)
+{
+    if (ex.GetType().Name != "StopTheHostException")
+    {
+        Log.Fatal(ex, "Unhandled exception");
+    }
+}
+finally
+{
+    await Services.UnregisterService(registration);
 
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers().RequireAuthorization("ApiScope");
-
-app.Run();
+    Log.Information("Shutting down");
+    Log.CloseAndFlush();
+}
