@@ -2,18 +2,15 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Sphere.Shared;
 
-Log.Logger = SphericalLogger.SetupLogger();
+// Setting this allows us to get some benefits all over the place.
+Services.Current = Services.Administration;
 
-Log.Information("Starting up");
-
-var registration = Services.Administration.GetServiceRegistration();
+Log.Logger = SphericalLogger.StartupLogger(Services.Current);
 
 try
 {
-    var result = await Services.RegisterService(registration);
-
     var builder = WebApplication.CreateBuilder(args);
-    builder.Host.UseSerilog(SphericalLogger.ConfigureLogger);
+    builder.Host.UseSerilog(SphericalLogger.SetupLogger);
     builder.Services.AddHealthChecks();
 
     // Add services to the container.
@@ -21,7 +18,8 @@ try
     builder.Services.AddAuthentication("Bearer")
         .AddJwtBearer("Bearer", options =>
         {
-            options.Authority = Services.Auth.Address;
+            // TODO: get this from right spot.
+            //options.Authority = Services.Auth.Address;
 
             options.TokenValidationParameters = new TokenValidationParameters
             {
@@ -45,7 +43,7 @@ try
     builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
-    app.MapHealthChecks("/health");
+    app.MapHealthChecks(Constants.HealthCheckEndpoint);
 
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
@@ -72,8 +70,6 @@ catch (Exception ex)
 }
 finally
 {
-    await Services.UnregisterService(registration);
-
     Log.Information("Shutting down");
     Log.CloseAndFlush();
 }
